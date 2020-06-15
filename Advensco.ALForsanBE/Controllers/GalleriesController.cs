@@ -1,34 +1,39 @@
-﻿using System;
+﻿using Advensco.ALForsanBE.Models;
+using Advensco.ALForsanBE.ViewModel;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Entity;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Net;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
-using Advensco.ALForsanBE.Models;
 
 namespace Advensco.ALForsanBE.Controllers
 {
     public class GalleriesController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
-
+        private Entities db = new Entities();
         // GET: Galleries
-        public async Task<ActionResult> Index()
+        public ActionResult Index()
         {
-            return View(await db.Galeries.ToListAsync());
+            var vm = db.Galleries.ToList();
+            return View(vm);
         }
 
-        // GET: Galleries/Details/5
-        public async Task<ActionResult> Details(int? id)
+        public ActionResult View(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Gallery gallery = await db.Galeries.FindAsync(id);
+            GalleryVM gallery = db.Galleries.Where(g=>g.Id == id).Select(g => new GalleryVM()
+            {
+                Id = g.Id,
+                Title = g.Title,
+                Images = g.Images.ToList()
+            }).FirstOrDefault();
+
             if (gallery == null)
             {
                 return HttpNotFound();
@@ -42,17 +47,13 @@ namespace Advensco.ALForsanBE.Controllers
             return View();
         }
 
-        // POST: Galleries/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create([Bind(Include = "Id,Title")] Gallery gallery)
+        public ActionResult Create(Gallery gallery)
         {
             if (ModelState.IsValid)
             {
-                db.Galeries.Add(gallery);
-                await db.SaveChangesAsync();
+                db.Galleries.Add(gallery);
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
 
@@ -60,13 +61,13 @@ namespace Advensco.ALForsanBE.Controllers
         }
 
         // GET: Galleries/Edit/5
-        public async Task<ActionResult> Edit(int? id)
+        public ActionResult Edit(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Gallery gallery = await db.Galeries.FindAsync(id);
+            Gallery gallery = db.Galleries.Where(g=>g.Id == id).FirstOrDefault();
             if (gallery == null)
             {
                 return HttpNotFound();
@@ -74,55 +75,172 @@ namespace Advensco.ALForsanBE.Controllers
             return View(gallery);
         }
 
-        // POST: Galleries/Edit/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Edit([Bind(Include = "Id,Title")] Gallery gallery)
+        public ActionResult Edit( Gallery gallery)
         {
             if (ModelState.IsValid)
             {
                 db.Entry(gallery).State = EntityState.Modified;
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
             return View(gallery);
         }
 
         // GET: Galleries/Delete/5
-        public async Task<ActionResult> Delete(int? id)
+        public ActionResult Delete(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Gallery gallery = await db.Galeries.FindAsync(id);
+            Gallery gallery = db.Galleries.Where(g=>g.Id == id).FirstOrDefault();
             if (gallery == null)
             {
                 return HttpNotFound();
             }
-            return View(gallery);
-        }
-
-        // POST: Galleries/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> DeleteConfirmed(int id)
-        {
-            Gallery gallery = await db.Galeries.FindAsync(id);
-            db.Galeries.Remove(gallery);
-            await db.SaveChangesAsync();
+            db.Galleries.Remove(gallery);
+            db.SaveChanges();
             return RedirectToAction("Index");
         }
 
-        protected override void Dispose(bool disposing)
+        // GET: Images/Create
+        public ActionResult AddImageToGallery()
         {
-            if (disposing)
+            var vm = new ImageVM()
             {
-                db.Dispose();
+                Galleries = db.Galleries.ToList()
+            };
+            return View(vm);
+        }
+
+        [HttpPost]
+        public ActionResult AddImageToGallery(ImageVM image, HttpPostedFileBase Path)
+        {
+            if (ModelState.IsValid)
+            {
+                var img = new Image()
+                {
+                    Title = image.Title,
+                    Caption = image.Caption,
+                    GalleryId = image.GalleryId,
+                };
+
+                if (Path != null && Path.ContentLength > 0)
+                {
+                    try
+                    {
+                        var ext = Path.FileName.Substring(Path.FileName.IndexOf('.') + 1);
+                        if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                        {
+                            string folderPath = "~/Content/upload_images/";
+                            Guid imageGUID = Guid.NewGuid();
+
+                            string path = Server.MapPath(folderPath) + imageGUID + "." + ext;
+                            Path.SaveAs(path);
+                            img.Path = folderPath.Substring(1) + imageGUID + "." + ext;
+                            ViewBag.Message = "Image uploaded successfully";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ViewBag.Message = "ERROR uploading Image";
+                    }
+                }
+                db.Images.Add(img);
+                db.SaveChanges();
+                return RedirectToAction("Index");
             }
-            base.Dispose(disposing);
+            return View(image);
+        }
+
+        // GET: Images/Edit/5
+        public ActionResult EditImage(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            Image image = db.Images.Where(g => g.Id == id).FirstOrDefault();
+
+            if (image == null)
+            {
+                return HttpNotFound();
+            }
+
+            var vm = new ImageVM()
+            {
+                Id = image.Id,
+                Caption = image.Caption,
+                GalleryId = image.GalleryId.HasValue ? image.GalleryId.Value : 0,
+                Path = image.Path,
+                Title = image.Title,
+                Galleries = db.Galleries.ToList()
+            };
+
+
+
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        public ActionResult EditImage(ImageVM image, HttpPostedFileBase Path)
+        {
+            var img = new Image()
+            {
+                Id = image.Id,
+                Caption = image.Caption,
+                GalleryId = image.GalleryId,
+                Title = image.Title,
+            };
+
+            if (Path != null && Path.ContentLength > 0)
+            {
+                try
+                {
+                    var ext = Path.FileName.Substring(Path.FileName.IndexOf('.') + 1);
+                    if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                    {
+                        string folderPath = "~/Content/upload_images/";
+                        Guid imageGUID = Guid.NewGuid();
+
+                        string path = Server.MapPath(folderPath) + imageGUID + "." + ext;
+                        Path.SaveAs(path);
+                        img.Path = folderPath.Substring(1) + imageGUID + "." + ext;
+                        ViewBag.Message = "Image uploaded successfully";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ViewBag.Message = "ERROR uploading Image";
+                }
+            }
+            if (ModelState.IsValid)
+            {
+                db.Entry(img).State = EntityState.Modified;
+                db.SaveChanges();
+                return RedirectToAction("Index");
+            }
+            return View(image);
+        }
+
+        // GET: Images/Delete/5
+        public ActionResult DeleteImage(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+            Image img = db.Images.Where(g => g.Id == id).FirstOrDefault();
+            var gId = img.GalleryId;
+            if (img == null)
+            {
+                return HttpNotFound();
+            }
+            db.Images.Remove(img);
+            db.SaveChanges();
+            return RedirectToAction("View/"+ gId);
         }
     }
 }

@@ -1,16 +1,15 @@
 ﻿@model Advensco.ALForsanBE.Models.Gallery
-
 @{
     ViewBag.Title = "Create";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
 <h2>Create</h2>
 
 
-@using (Html.BeginForm()) 
+@using (Html.BeginForm())
 {
-    @Html.AntiForgeryToken()
-    
+
     <div class="form-horizontal">
         <h4>Gallery</h4>
         <hr />

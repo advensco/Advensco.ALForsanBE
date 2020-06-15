@@ -1,189 +1,164 @@
-﻿using System;
+﻿using Advensco.ALForsanBE.Models;
+using Advensco.ALForsanBE.ViewModel;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Entity;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
-using Advensco.ALForsanBE.Models;
-using System.IO;
 
 namespace Advensco.ALForsanBE.Controllers
 {
     public class ImagesController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
 
+        private Entities db = new Entities();
         // GET: Images
-        public async Task<ActionResult> Index()
+        public ActionResult Index()
         {
-            return View(await db.Images.ToListAsync());
+            var vm = db.Images.ToList();
+            return View(vm);
         }
 
-        // GET: Images/Details/5
-        public async Task<ActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-            Image image = await db.Images.FindAsync(id);
-            if (image == null)
-            {
-                return HttpNotFound();
-            }
-            return View(image);
-        }
+
 
         // GET: Images/Create
         public ActionResult Create()
         {
-            return View();
+            var vm = new ImageVM()
+            {
+                Galleries = db.Galleries.ToList()
+            };
+            return View(vm);
         }
 
-        // POST: Images/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create([Bind(Include = "Id,Path,Title,Caption")] ImageVM image)
+        public ActionResult Create(ImageVM image, HttpPostedFileBase Path)
         {
             if (ModelState.IsValid)
             {
-                string filePath = string.Empty;
-                string fileContentType = string.Empty;
+                var img = new Image()
+                {
+                    Title = image.Title,
+                    Caption = image.Caption,
+                    GalleryId = image.GalleryId,
+                };
 
-                byte[] uploadedFile = new byte[image.Path.InputStream.Length];
-                image.Path.InputStream.Read(uploadedFile, 0, uploadedFile.Length);
+                if (Path != null && Path.ContentLength > 0)
+                {
+                    try
+                    {
+                        var ext = Path.FileName.Substring(Path.FileName.IndexOf('.') + 1);
+                        if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                        {
+                            string folderPath = "~/Content/upload_images/";
+                            Guid imageGUID = Guid.NewGuid();
 
-                // Initialization.  
-                fileContentType = image.Path.ContentType;
-                string folderPath = "~/Content/upload_images/";
-                this.WriteBytesToFile(this.Server.MapPath(folderPath), uploadedFile, image.Path.FileName);
-                filePath = folderPath + image.Path.FileName;
-
-
-
-                db.Images.Add(new Image(){Caption = image.Caption, Id = image.Id, Path = filePath , Title = image.Title});
-                await db.SaveChangesAsync();
+                            string path = Server.MapPath(folderPath) + imageGUID + "." + ext;
+                            Path.SaveAs(path);
+                            img.Path = folderPath.Substring(1) + imageGUID + "." + ext;
+                            ViewBag.Message = "Image uploaded successfully";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ViewBag.Message = "ERROR uploading Image";
+                    }
+                }
+                db.Images.Add(img);
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
-
             return View(image);
         }
 
         // GET: Images/Edit/5
-        public async Task<ActionResult> Edit(int? id)
+        public ActionResult Edit(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Image image = await db.Images.FindAsync(id);
+            Image image = db.Images.Where(g => g.Id == id).FirstOrDefault();
+
             if (image == null)
             {
                 return HttpNotFound();
             }
-            return View(image);
+
+            var vm = new ImageVM()
+            {
+                Id = image.Id,
+                Caption = image.Caption,
+                GalleryId = image.GalleryId.HasValue ? image.GalleryId.Value : 0,
+                Path = image.Path,
+                Title = image.Title,
+                Galleries = db.Galleries.ToList()
+            };
+
+
+
+
+            return View(vm);
         }
 
-        // POST: Images/Edit/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Edit([Bind(Include = "Id,Path,Title,Caption")] Image image)
+        public ActionResult Edit(ImageVM image, HttpPostedFileBase Path)
         {
+            var img = new Image()
+            {
+                Id = image.Id,
+                Caption = image.Caption,
+                GalleryId = image.GalleryId,
+                Title = image.Title,
+            };
+
+            if (Path != null && Path.ContentLength > 0)
+            {
+                try
+                {
+                    var ext = Path.FileName.Substring(Path.FileName.IndexOf('.') + 1);
+                    if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                    {
+                        string folderPath = "~/Content/upload_images/";
+                        Guid imageGUID = Guid.NewGuid();
+
+                        string path = Server.MapPath(folderPath) + imageGUID + "." + ext;
+                        Path.SaveAs(path);
+                        img.Path = folderPath.Substring(1) + imageGUID + "." + ext;
+                        ViewBag.Message = "Image uploaded successfully";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ViewBag.Message = "ERROR uploading Image";
+                }
+            }
             if (ModelState.IsValid)
             {
-                db.Entry(image).State = EntityState.Modified;
-                await db.SaveChangesAsync();
+                db.Entry(img).State = EntityState.Modified;
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
             return View(image);
         }
 
         // GET: Images/Delete/5
-        public async Task<ActionResult> Delete(int? id)
+        public ActionResult Delete(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Image image = await db.Images.FindAsync(id);
-            if (image == null)
+            Image img = db.Images.Where(g => g.Id == id).FirstOrDefault();
+            if (img == null)
             {
                 return HttpNotFound();
             }
-            return View(image);
-        }
-
-        // POST: Images/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> DeleteConfirmed(int id)
-        {
-            Image image = await db.Images.FindAsync(id);
-            db.Images.Remove(image);
-            await db.SaveChangesAsync();
+            db.Images.Remove(img);
+            db.SaveChanges();
             return RedirectToAction("Index");
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                db.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
-        private void WriteBytesToFile(string rootFolderPath, byte[] fileBytes, string filename)
-        {
-            try
-            {
-                // Verification.  
-                if (!Directory.Exists(rootFolderPath))
-                {
-                    // Initialization.  
-                    string fullFolderPath = rootFolderPath;
-
-                    // Settings.  
-                    string folderPath = new Uri(fullFolderPath).LocalPath;
-
-                    // Create.  
-                    Directory.CreateDirectory(folderPath);
-                }
-
-                // Initialization.                  
-                string fullFilePath = rootFolderPath + filename;
-
-                // Create.  
-                FileStream fs = System.IO.File.Create(fullFilePath);
-
-                // Close.  
-                fs.Flush();
-                fs.Dispose();
-                fs.Close();
-
-                // Write Stream.  
-                BinaryWriter sw = new BinaryWriter(new FileStream(fullFilePath, FileMode.Create, FileAccess.Write));
-
-                // Write to file.  
-                sw.Write(fileBytes);
-
-                // Closing.  
-                sw.Flush();
-                sw.Dispose();
-                sw.Close();
-            }
-            catch (Exception ex)
-            {
-                // Info.  
-                throw ex;
-            }
         }
     }
 }

@@ -1,39 +1,43 @@
-﻿using System;
+﻿using Advensco.ALForsanBE.Models;
+using Advensco.ALForsanBE.ViewModel;
+using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Entity;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
-using Advensco.ALForsanBE.Models;
 
 namespace Advensco.ALForsanBE.Controllers
 {
     public class ProductsController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
-
+        private Entities db = new Entities();
         // GET: Products
-        public async Task<ActionResult> Index()
+        public ActionResult Index()
         {
-            return View(await db.Products.ToListAsync());
+            var vm = db.Products.ToList();
+            return View(vm);
         }
 
-        // GET: Products/Details/5
-        public async Task<ActionResult> Details(int? id)
+        public ActionResult View(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Product product = await db.Products.FindAsync(id);
-            if (product == null)
+            GalleryVM gallery = db.Galleries.Where(g => g.Id == id).Select(g => new GalleryVM()
+            {
+                Id = g.Id,
+                Title = g.Title,
+                Images = g.Images.ToList()
+            }).FirstOrDefault();
+
+            if (gallery == null)
             {
                 return HttpNotFound();
             }
-            return View(product);
+            return View(gallery);
         }
 
         // GET: Products/Create
@@ -42,31 +46,48 @@ namespace Advensco.ALForsanBE.Controllers
             return View();
         }
 
-        // POST: Products/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Create([Bind(Include = "Id,Name,Description")] Product product)
+        public ActionResult Create(Product product, HttpPostedFileBase Image)
         {
             if (ModelState.IsValid)
             {
+                if (Image != null && Image.ContentLength > 0)
+                {
+                    try
+                    {
+                        var ext = Image.FileName.Substring(Image.FileName.IndexOf('.') + 1);
+                        if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                        {
+                            string folderPath = "~/Content/upload_images/";
+                            Guid imageGUID = Guid.NewGuid();
+
+                            string path = Server.MapPath(folderPath)+ imageGUID + "." + ext;
+                            Image.SaveAs(path);
+                            product.ImagePath = folderPath.Substring(1) + imageGUID + "." + ext;
+                            ViewBag.Message = "Image uploaded successfully";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ViewBag.Message = "ERROR uploading Image";
+                    }
+                }
                 db.Products.Add(product);
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
 
             return View(product);
         }
 
-        // GET: Products/Edit/5
-        public async Task<ActionResult> Edit(int? id)
+        // GET: Galleries/Edit/5
+        public ActionResult Edit(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Product product = await db.Products.FindAsync(id);
+            Product product = db.Products.Where(g => g.Id == id).FirstOrDefault();
             if (product == null)
             {
                 return HttpNotFound();
@@ -74,55 +95,55 @@ namespace Advensco.ALForsanBE.Controllers
             return View(product);
         }
 
-        // POST: Products/Edit/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Edit([Bind(Include = "Id,Name,Description")] Product product)
+        public ActionResult Edit(Product product, HttpPostedFileBase Image)
         {
             if (ModelState.IsValid)
             {
+                if (Image != null && Image.ContentLength > 0)
+                {
+                    try
+                    {
+                        var ext = Image.FileName.Substring(Image.FileName.IndexOf('.') + 1);
+                        if (ext == "jpg" || ext == "png" || ext == "jpeg" || ext == "JPG" || ext == "PNG" || ext == "JPEG")
+                        {
+                            string folderPath = "~/Content/upload_images/";
+                            Guid imageGUID = Guid.NewGuid();
+
+                            string path = Server.MapPath(folderPath) + imageGUID + "." + ext;
+                            Image.SaveAs(path);
+                            product.ImagePath = folderPath.Substring(1) + imageGUID + "." + ext;
+                            ViewBag.Message = "Image uploaded successfully";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ViewBag.Message = "ERROR uploading Image";
+                    }
+                }
+
                 db.Entry(product).State = EntityState.Modified;
-                await db.SaveChangesAsync();
+                db.SaveChanges();
                 return RedirectToAction("Index");
             }
             return View(product);
         }
 
         // GET: Products/Delete/5
-        public async Task<ActionResult> Delete(int? id)
+        public ActionResult Delete(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
-            Product product = await db.Products.FindAsync(id);
+            Product product = db.Products.Where(g => g.Id == id).FirstOrDefault();
             if (product == null)
             {
                 return HttpNotFound();
             }
-            return View(product);
-        }
-
-        // POST: Products/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> DeleteConfirmed(int id)
-        {
-            Product product = await db.Products.FindAsync(id);
             db.Products.Remove(product);
-            await db.SaveChangesAsync();
+            db.SaveChanges();
             return RedirectToAction("Index");
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                db.Dispose();
-            }
-            base.Dispose(disposing);
         }
     }
 }

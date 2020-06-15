@@ -1,0 +1,47 @@
+﻿@model Advensco.ALForsanBE.ViewModel.GalleryVM
+@{
+    ViewBag.Title = "View";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>@Model.Title</h2>
+<p>
+    @Html.ActionLink("Add New", "AddImage")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @*@Html.DisplayNameFor(model => model.Path)*@
+            Image
+        </th>
+        <th>
+           Title
+        </th>
+        <th>
+            @*@Html.DisplayNameFor(model => model.Caption)*@
+            Caption
+        </th>
+        <th></th>
+    </tr>
+
+    @foreach (var item in Model.Images)
+    {
+        <tr>
+            <td>
+                @*@Html.DisplayFor(modelItem => item.Path)*@
+                <img width="100" height="100" src="@item.Path" />
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Title)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Caption)
+            </td>
+            <td>
+                @Html.ActionLink("Edit", "EditImage", new { id = item.Id }) |
+                @Html.ActionLink("Delete", "DeleteImage", new { id = item.Id })
+            </td>
+        </tr>
+    }
+
+</table>

@@ -1,7 +1,11 @@
-﻿using Microsoft.Owin;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Owin;
 using Owin;
 
-[assembly: OwinStartupAttribute(typeof(Advensco.ALForsanBE.Startup))]
+[assembly: OwinStartup(typeof(Advensco.ALForsanBE.Startup))]
+
 namespace Advensco.ALForsanBE
 {
     public partial class Startup
